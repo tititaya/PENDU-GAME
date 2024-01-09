@@ -1,3 +1,9 @@
+/*
+ * general.c
+ * PoPS ESR v1.3
+ *
+ */
+
 #include <stdio.h>
 #include <sys/ioctl.h>
 #include <termios.h>
@@ -9,387 +15,42 @@
 #include <openssl/evp.h>
 #include <openssl/rand.h>
 #include <openssl/sha.h>
-#include <stdio.h>
 #include <stdbool.h>
- 
-
-
-
-// Structure pour stocker l'état du jeu
-typedef struct {
-    char motSecret[50];              // Mot à deviner
-    char motAffiche[50];             // Mot affiché avec les lettres trouvées
-    int tentativesMax;               // Nombre maximum de tentatives autorisées
-    int tentativesRestantes;         // Nombre de tentatives restantes
-    char lettresUtilisees[26];       // Lettres déjà utilisées
-} JeuPendu;
-
-
-
-
-//void afficherPendu(int tentativesRestantes, int x, int y);
-// Déclaration de la structure termsize
-struct termsize {
-    int cols;
-    int rows;
-};
-
-// Récupération de la taille du terminal
-struct termsize gettermsize(void) {
-    struct termsize size;
-    struct winsize win;
-    ioctl(STDOUT_FILENO, TIOCGWINSZ, &win);
-    size.cols = win.ws_col;
-    size.rows = win.ws_row;
-    return size;
-}
-
-
-// Récupération de la taille du terminal
-struct termsize gettermsize(void);
-
-
-// Structure pour représenter un compte utilisateur
-struct Compte {
-    char nom[50];
-    char prenom[50];
-    char username[50];
-    char motDePasse[100];
-    
-};
-
-
-
-// Déclaration de la fonction pour obtenir une lettre de l'utilisateur
-char getLettre(const char *message);
-
-
-
-
-
-
-
-/*
-
-définition des prototype de fonction
-
-*/void afficherMenu();
-
-// Fonction pour afficher l'état du jeu à des coordonnées spécifiques
-void afficherEtatJeu(JeuPendu jeu, int x, int y);
-void affichePendu(int Hdebut, int Ldebut);
-
-// Fonction pour afficher le pendu en fonction du nombre d'essais restants
-void afficherPendu(int tentativesRestantes, int x, int y, int animationFrame);
-
-// Fonction principale pour saisir les informations d'identification
-void infoIdentification(struct Compte *nouveauCompte, int x, int y);
-
-// Fonction pour gérer les comptes utilisateurs
-void creerNouveauCompte();
-void gererComptes();
-
-// Fonction pour vérifier si un utilisateur existe dans le fichier de comptes
-int verifierUtilisateur(const char* nomUtilisateur);
-
-void enregistrerCompte(struct Compte *nouveauCompte);
-void dessine_cadre();
-void chargement();
-void enregistrement();
-
-void introduction();
-void afficherMessage(int x, int y, const char *message);
-void affiche_titre(int x, int y);
-
-void effacerLigne(int x, int y, int longueur);
-
-
-
-
-// Fonctions liées au jeu de pendu
-
-// Fonction pour demander à l'utilisateur s'il veut rejouer
-bool voulezRejouer(int x, int y);
-
-// Fonction pour jouer une partie au niveau B1
-void jouerPartieB1(int xDebutCadre, int yDebutCadre);
-
-// Fonction pour jouer une partie au niveau B2
-void jouerPartieB2(int xDebutCadre, int yDebutCadre);
-
-// Fonction pour jouer une partie au niveau C1
-void jouerPartieC1(int xDebutCadre, int yDebutCadre);
-
-void nouvellePartie(int x, int y);
-int choisirDestination(int x, int y);
-
-void jouerPartie();
-
-
-// Déclaration de la fonction pour obtenir une lettre de l'utilisateur
-char getLettre(const char *message);
+#include "general.h"
+#include "interface.h"
 
 
 
 // Définition de la fonction afficherMessage
-void afficherMessage(int x, int y, const char *message);
-
-
-// Fonction pour choisir un mot aléatoire à partir d'un fichier
-char *choisirMotAleatoire(const char *nomFichier);
-
-// Fonction pour vérifier si une lettre a déjà été utilisée
-int lettreDejaUtilisee(char lettre, const char lettresUtilisees[]);
-
-// Fonction pour marquer une lettre comme utilisée
-void marquerLettreUtilisee(char lettre, char lettresUtilisees[]);
-
-// Fonction pour vérifier si une lettre est dans le mot secret
-int lettreDansMot(char lettre, const char motSecret[]);
-
-// Fonction pour mettre à jour le mot affiché avec une lettre trouvée
-void mettreAJourMotAffiche(char lettre, const char motSecret[], char motAffiche[]);
-
-// Fonction pour vérifier si le mot a été entièrement deviné
-int motDevinerTrouve(const char motSecret[], const char motAffiche[]);
-
-
-int estAlpha(const char *str);
-int estAlphaAvecCaracteresSpeciaux(const char *str);
-
-void genererSel(unsigned char *sel, size_t taille);
-void saisirNomOuPrenom(char *champ, const char *message, int x, int y);
-
-
-// Fonction pour saisir un nom d'utilisateur et vérifier les caractères spéciaux
-void saisirNomUtilisateur(char *username, int x, int y);
-
-
-
-// Fonction pour saisir un mot de passe en masquant l'entrée
-void saisirMotDePasse(char *motDePasse, int x, int y) ;
-
-
-
-
-
-
-
-
+void afficherMessage(int x, int y, const char *message) {
+    gotoxy(x, y);
+    printf("%s", message);
+}
 
 /*
-
-definition des fonctions 
-
-
-***/
-
-
-
-
-
-
-/*
-
 
 */
 
-
-
-// Fonction pour lire une ligne depuis l'entrée standard
-
-void readLine(char *buffer, int bufferSize) {
-    fgets(buffer, bufferSize, stdin);
-    // Supprimer le saut de ligne final, s'il est présent
-    size_t len = strlen(buffer);
-    if (len > 0 && buffer[len - 1] == '\n') {
-        buffer[len - 1] = '\0';
-    }
+// Fonction pour afficher le menu initial
+void affiche_titre(int x, int y) {
+    clrscr();
+    dessine_cadre();
+    gotoxy(x, y - 6);
+    printf("JEUX DE PENDU\n\n");
+    // ... (autre code d'affichage)
 }
 
-/****
-
-
-
-***/
-
-
-// Fonction pour obtenir une chaîne sécurisée
-void getString(char *str, int maxSize, const char *prompt) {
-    printf("%s", prompt);
-    readLine(str, maxSize);
+// Fonction pour effacer le menu
+void effacerMenu(int x, int y) {
+    clrscr();
+    dessine_cadre();
+    
+    gotoxy(x, y - 6);
 }
-
-
-
-/***
-
-
-
-**/
-
-
-// Fonction pour obtenir un entier sécurisé
-int getInt(const char *prompt) {
-    int value;
-    char buffer[256]; // Taille maximale du tampon
-
-    do {
-        getString(buffer, sizeof(buffer), prompt);
-    } while (sscanf(buffer, "%d", &value) != 1);
-
-    return value;
-}
-
-
-
-
-
 
 /*
-delai: fonction permettant de faire un temps d'attente en fonction de son paramètre
-@param: paramètre qui désigne le temps d'attente
 
 */
-void delai(float nbsecondes) { 
-  /* Calcul: chaque système définit le nombre de périodes
-   * d'horloge par seconde
-   * La fonction clock() renvoie le temps en nombre de périodes
-   * d'horloge (ou clock ticks)
-   */
- float pause = nbsecondes*(float)CLOCKS_PER_SEC;
-
-  /* Mémorisation de l'heure de départ */
-  clock_t start_time = clock(); 
-     float temps= (float)start_time;
-  /* On boucle tant que la temporisation n'est pas atteinte */
-  while ((float)clock()< temps + pause); 
-}
-
-
-
-
-
-/* Attente d'un appui sur Entrée */
-void wait(void) {
-    while (fgetc(stdin) != '\n');
-}
-
-
-/* Efface l'affichage */
-void clrscr(void) {
-  printf("\033[2J\033[?6h");
-}
-
-
-/* Déplacement en x,y du curseur */
-void gotoxy(int x, int y) {
-  printf("\033[%d;%dH", y, x);
-}
-
-
-void setfontcolor(int color) {
-  printf("\033[%dm", color);
-}
-
-void setbgrcolor(int color) {
-  printf("\033[%dm", color+10);
-}
-
-/* Police en mode bold (gras ou en évidence) */
-void setfontbold(int status) {
-  printf("\033[%dm", status);
-}
-
-void setunderline(int status) {
-  if (status) status = 4;
-  printf("\033[%dm", status);
-}
-
-void setblink(int status) {
-  if (status) status = 5;
-  printf("\033[%dm", status);
-}
-
-/* Définit le titre du terminal */
-void settitle(char const* title) {
-  printf("\033]0;%s\x7", title);
-}
-
-/* Désactive l'affichage du curseur */
-void hidecursor(void) {
-  printf("\033[?25l");
-}
-
-/* Réactive l'affichage du curseur */
-void unhidecursor(void) {
-  printf("\033[?25h");
-}
-
-void setcurshape(int shape) {
-  // vt520/xterm-style; linux terminal uses ESC[?1;2;3c, not implemented
-  printf("\033[%d q", shape);
-}
-
-
-
-
-/* Récupération d'un caractère au clavier
- * avec écho du caractère sans besoin d'appuyer
- * sur Entrée
- */
-int getche(void) {
-  struct termios oldattr, newattr;
-  tcgetattr(STDIN_FILENO, &oldattr);
-
-  newattr = oldattr;
-  newattr.c_lflag &= ~ICANON;
-  tcsetattr(STDIN_FILENO, TCSANOW, &newattr);
-
-  int ch = getc(stdin);
-
-  tcsetattr(STDIN_FILENO, TCSANOW, &oldattr);
-
-  return ch;
-}
-
-void clrline(void) {
-  printf("\033[2K\033E");
-}
-
-void resetcolors(void) {
-  printf("\033[0m");
-}
-
-void resetterminal(void) {
-  printf("\033c");
-}
-
-/* sous Unix/Linux la sortie standard
- * stdout est bufférisée, i.e., un printf
- * ne s'affiche que si un \n est dans le buffer
- * Cette fonction désactive le buffer
- */
-void nostdoutbuff(void) {
-  setvbuf(stdout, NULL, _IONBF, 0);
-}
-
-/* Réactive le buffer de la sortie standard */
-void setstdoutbuff(void) {
-  setvbuf(stdout, NULL, _IOLBF, 0);
-}
-
-/* Pour vider les caractères restant dans le
- * buffer de saisie de caractères
- */
-void flushstdin(void) {
-  char c;
-  while((c = getchar()) != '\n' && c != EOF);
-}
-
-
-
-
 
 
 
@@ -416,6 +77,7 @@ void dessine_cadre() {
         }
     }
 }
+
 
 
 
@@ -446,7 +108,7 @@ void affichePendu(int Hdebut, int Ldebut) {
     printf(" _|_\n");
     resetcolors();
 }
- 
+
 
 
 /*
@@ -468,9 +130,6 @@ for(i=0;i<=24;++i){gotoxy(Hdebut+20+i,Ldebut+10);printf(" \n");}
 
 
 
-
-
-
 /*
 *enregistrement: permet de faire une simulation de l'enrestrement
 
@@ -486,118 +145,6 @@ for(i=0;i<=20;++i){r=(i*100)/20;delai(0.16);gotoxy(Hdebut+20+i,Ldebut+10);setbgr
 for(i=0;i<=24;++i){gotoxy(Hdebut+20+i,Ldebut+10);printf(" \n");}
 }
 
-
-
-void effacerLigne(int x, int y, int longueur) {
-    gotoxy(x, y);
-    for (int i = 0; i < longueur; ++i) {
-        printf(" ");
-    }
-}
-
-
-
-/*
-
-
-
-
-*/
-
-
-
-
-// Fonction pour vérifier si une chaîne contient uniquement des lettres
-int estAlpha(const char *str) {
-    for (int i = 0; str[i] != '\0'; i++) {
-        if (!isalpha(str[i])) {
-            return 0;  // Non alphabétique trouvé
-        }
-    }
-    return 1;  // Tous les caractères sont alphabétiques
-}
-
-// Fonction pour vérifier si une chaîne contient uniquement des lettres et des caractères spéciaux autorisés
-int estAlphaAvecCaracteresSpeciaux(const char *str) {
-    for (int i = 0; str[i] != '\0'; i++) {
-        if (!isalpha(str[i]) && str[i] != '@' && str[i] != '#' && str[i] != '$' && str[i] != '~') {
-            return 0;  // Caractère non autorisé trouvé
-        }
-    }
-    return 1;  // Tous les caractères sont autorisés
-}
-
-/*
-
-*/
-void genererSel(unsigned char *sel, size_t taille) {
-    if (RAND_bytes(sel, taille) != 1) {
-        fprintf(stderr, "Erreur lors de la génération du sel\n");
-        exit(EXIT_FAILURE);
-    }
-}
-
-void enregistrerCompte(struct Compte *nouveauCompte) {
-    FILE *fichierComptes = fopen("comptes.txt", "a");
-
-    if (fichierComptes == NULL) {
-        perror("Erreur lors de l'ouverture du fichier");
-        exit(EXIT_FAILURE);
-    }
-
-    // Générer un sel aléatoire pour le hachage
-    unsigned char salt[16];
-    genererSel(salt, sizeof(salt));
-
-    // Hacher le mot de passe avec SHA-256
-    unsigned char hashMotDePasse[SHA256_DIGEST_LENGTH];
-    EVP_MD_CTX *mdctx = EVP_MD_CTX_new();
-
-    if (mdctx == NULL) {
-        fprintf(stderr, "Erreur lors de la création du contexte de hachage\n");
-        fclose(fichierComptes);
-        exit(EXIT_FAILURE);
-    }
-
-    if (EVP_DigestInit_ex(mdctx, EVP_sha256(), NULL) != 1 ||
-        EVP_DigestUpdate(mdctx, salt, sizeof(salt)) != 1 ||
-        EVP_DigestUpdate(mdctx, nouveauCompte->motDePasse, strlen(nouveauCompte->motDePasse)) != 1 ||
-        EVP_DigestFinal_ex(mdctx, hashMotDePasse, NULL) != 1) {
-        fprintf(stderr, "Erreur lors du hachage du mot de passe\n");
-        EVP_MD_CTX_free(mdctx);
-        fclose(fichierComptes);
-        exit(EXIT_FAILURE);
-    }
-
-    EVP_MD_CTX_free(mdctx);
-
-    // Convertir le sel et le hachage en représentation hexadécimale pour stockage
-    char hexSalt[sizeof(salt) * 2 + 1];
-    char hexHash[sizeof(hashMotDePasse) * 2 + 1];
-
-    // Utiliser strncpy pour copier le sel
-    strncpy(hexSalt, "", sizeof(hexSalt));
-    for (size_t i = 0; i < sizeof(salt); i++) {
-        snprintf(hexSalt + 2 * i, 3, "%02x", salt[i]);
-    }
-    hexSalt[sizeof(hexSalt) - 1] = '\0'; // Assurer la null-termination
-
-    // Utiliser strncpy pour copier le hachage
-    strncpy(hexHash, "", sizeof(hexHash));
-    for (size_t i = 0; i < sizeof(hashMotDePasse); i++) {
-        snprintf(hexHash + 2 * i, 3, "%02x", hashMotDePasse[i]);
-    }
-    hexHash[sizeof(hexHash) - 1] = '\0'; // Assurer la null-termination
-
-    // Écrire les informations du compte dans le fichier
-    if (fprintf(fichierComptes, "%s %s %s %s\n", nouveauCompte->nom, nouveauCompte->prenom, nouveauCompte->username, hexHash) < 0) {
-        perror("Erreur lors de l'écriture dans le fichier");
-        exit(EXIT_FAILURE);
-    }
-
-    // Fermer le fichier
-    fclose(fichierComptes);
-}
 
 
 
@@ -634,269 +181,10 @@ int choisirDestination(int x, int y) {
 
 
 
-
-
-
-
-// Fonction pour créer un nouveau compte
-
-// Fonction pour saisir une chaîne et vérifier si elle ne contient que des lettres
-void saisirNomOuPrenom(char *champ, const char *message, int x, int y) {
-    do {
-        gotoxy(x, y);
-        printf("%s", message);
-        getString(champ, sizeof(champ), "");
-    } while (!estAlpha(champ));
-}
-
-// Fonction pour saisir un nom d'utilisateur et vérifier les caractères spéciaux
-void saisirNomUtilisateur(char *username, int x, int y) {
-    do {
-        gotoxy(x, y);
-        printf("Nom d'utilisateur : ");
-        getString(username, sizeof(username), "");
-    } while (!estAlphaAvecCaracteresSpeciaux(username));
-}
-
-// Fonction pour saisir un mot de passe en masquant l'entrée
-void saisirMotDePasse(char *motDePasse, int x, int y) {
-    gotoxy(x, y);
-    printf("Mot de passe : ");
-    strcpy(motDePasse, getpass(""));
-}
-
-
-// Définition de la fonction afficherMessage
-void afficherMessage(int x, int y, const char *message) {
-    gotoxy(x, y);
-    printf("%s", message);
-}
-
-
-// Fonction principale pour saisir les informations d'identification
-void infoIdentification(struct Compte *nouveauCompte, int x, int y) {
-    // Effacer l'écran complet
-    clrscr();
-    // Redessiner le cadre
-    dessine_cadre();
-
-    // Afficher le sous-menu des comptes
-    struct termsize taille;
-    taille = gettermsize();
-
-    // Coordonnées pour positionner le contenu au centre du cadre
-    int xDebutContenu = (taille.cols - 18) / 2;  // Centré horizontalement
-    int yDebutContenu = (taille.rows - 45) / 2 + 10;   // Centré verticalement
-    gotoxy(xDebutContenu , yDebutContenu - 6);
-    printf("JEUX DE PENDU\n\n");
-    gotoxy(xDebutContenu - 10, yDebutContenu - 3);
-    printf("BIENVENUE DANS L'ESPACE DE CRÉATION DE COMPTE\n\n");
-
-    // Vider le tampon d'entrée
-    int c;
-    while ((c = getchar()) != '\n' && c != EOF);
-
-    // Appeler les fonctions pour saisir les informations
-    saisirNomOuPrenom(nouveauCompte->nom, "Nom : ", xDebutContenu - 10, yDebutContenu + 11);
-    saisirNomOuPrenom(nouveauCompte->prenom, "Prénom : ", xDebutContenu - 10, yDebutContenu + 13);
-    saisirNomUtilisateur(nouveauCompte->username, xDebutContenu - 10, yDebutContenu + 15);
-    saisirMotDePasse(nouveauCompte->motDePasse, xDebutContenu - 10, yDebutContenu + 18);
-
-    // Enregistrement du compte
-    enregistrerCompte(nouveauCompte);
-    enregistrement();
-
-    // Effacer l'écran complet
-    clrscr();
-    // Redessiner le cadre
-    dessine_cadre();
-    gotoxy(xDebutContenu , yDebutContenu - 6);
-    printf("JEUX DE PENDU\n\n");
-    // Message de succès
-    afficherMessage(xDebutContenu - 10, yDebutContenu, "Nouveau compte créé avec succès !");
-
-    // Utiliser la fonction choisirDestination
-    choisirDestination(xDebutContenu - 22, yDebutContenu + 3);
-
-    // Vider le tampon d'entrée après la saisie
-    flushstdin();
-
-    setfontcolor(0);
-}
-
-
-
 /*
 
 
-
-
 */
-
-
-
-
-
-void creerNouveauCompte() {
-    struct Compte nouveauCompte;
-
-    // Afficher le sous-menu des comptes
-    struct termsize taille;
-    taille = gettermsize();
-
-    // Coordonnées pour positionner le contenu au centre du cadre
-    int xDebutContenu = (taille.cols - 18) / 2;  // Centré horizontalement
-    int yDebutContenu = (taille.rows - 45) / 2 + 10;   // Centré verticalement
-
-    gotoxy(xDebutContenu , yDebutContenu - 6);
-    printf("JEUX DE PENDU\n\n");
-
-    // Appel de la fonction infoIdentification avec les arguments appropriés
-    infoIdentification(&nouveauCompte, xDebutContenu - 22, yDebutContenu + 3);
-
-
-    // Ajoutez d'autres champs si nécessaire
-
-    
-
-    gotoxy(xDebutContenu -10, yDebutContenu + 22);
-    // Attendre avant de revenir au menu des comptes
-    printf("Appuyez sur Entrée pour continuer...");
-    while (getchar() != '\n');
-flushstdin();  // Vider le tampon d'entrée après la saisie
-
-}
-
-
-void gererComptes() {
-    int choix;
-    do {
-        // Effacer l'écran complet
-        clrscr();
-        
-        // Afficher le sous-menu des comptes
-        struct termsize taille;
-        taille = gettermsize();
-
-        // Coordonnées pour positionner le contenu au centre du cadre
-        int xDebutContenu = (taille.cols - 18) / 2;  // Centré horizontalement
-        int yDebutContenu = (taille.rows - 45) / 2 + 10;   // Centré verticalement
-
-        // Redessiner le cadre
-        dessine_cadre();
-        
-        gotoxy(xDebutContenu , yDebutContenu - 6);
-        printf("JEUX DE PENDU\n\n");
-        setfontcolor(34);
-
-        // Positionner le curseur au début du cadre
-        gotoxy(xDebutContenu - 4, yDebutContenu -3);
-
-        printf("    GESTION DES COMPTES UTILISATEURS\n\n");
-        setfontbold(1);
-
-        // Options de base
-        gotoxy(xDebutContenu - 20, yDebutContenu);
-        printf("1. Créer un Nouveau Compte\n");
-        
-        gotoxy(xDebutContenu + 20, yDebutContenu);
-        printf("2. Se Connecter\n");
-
-        gotoxy(xDebutContenu - 20, yDebutContenu + 3);
-        printf("3. Se Déconnecter\n");
-    
-        gotoxy(xDebutContenu + 20, yDebutContenu + 3);
-        printf("4. Retour au Menu Principal\n");
-        setfontbold(0);
-        
-        gotoxy(xDebutContenu, yDebutContenu + 11);
-        //printf("Entrez votre choix : ");
-        choix = getInt("Entrez votre choix : ");
-
-        switch (choix) {
-            case 1:
-                // Code pour créer un nouveau compte
-                creerNouveauCompte();
-                break;
-            case 2:
-                // Code pour se connecter
-                  gotoxy(xDebutContenu , yDebutContenu - 19);
-                    //printf("se connecter ");
-                    //seConnecter();
-                break;
-                
-            case 3:
-                // Code pour se déconnecter
-                break;
-            case 4:
-                // Retour au menu principal
-                afficherMenu();
-                break;
-            default:
-                // Positionner le curseur avant d'afficher le message
-                gotoxy(xDebutContenu, yDebutContenu + 11);
-                printf("Choix invalide. Veuillez réessayer.\n");
-                break;
-        }
-
-    } while (choix != 4);
-}
-
-
-
-
-// Fonction pour lancer le niveau B1
-void jouerPartie_B1() {
-    // Ajoutez le code spécifique pour le niveau B1 ici
-    printf("Lancement du niveau B1...\n");
-}
-
-
-// Fonction pour vérifier si un utilisateur existe dans le fichier de comptes
-int verifierUtilisateur(const char* nomUtilisateur) {
-    FILE* fichier = fopen("comptes.txt", "r");
-    if (fichier == NULL) {
-        perror("Erreur lors de l'ouverture du fichier de comptes");
-        exit(EXIT_FAILURE);
-    }
-
-    struct Compte compte;
-    int utilisateurExiste = 0;
-    while (fscanf(fichier, "%s %s %s %s", compte.nom, compte.prenom, compte.username, compte.motDePasse) == 4) {
-        if (strcmp(compte.username, nomUtilisateur) == 0) {
-            utilisateurExiste = 1;
-            break;
-        }
-    }
-
-    fclose(fichier);
-
-    return utilisateurExiste;
-}
-
-
-
-
-// Fonction pour afficher le menu initial
-void affiche_titre(int x, int y) {
-    clrscr();
-    dessine_cadre();
-    gotoxy(x, y - 6);
-    printf("JEUX DE PENDU\n\n");
-    // ... (autre code d'affichage)
-}
-
-// Fonction pour effacer le menu
-void effacerMenu(int x, int y) {
-    clrscr();
-    dessine_cadre();
-    
-    gotoxy(x, y - 6);
-    // Vous pouvez ajouter d'autres éléments à afficher après l'effacement du menu si nécessaire
-}
-
-
-
 
 // Fonction pour lancer une nouvelle partie
 void nouvellePartie(int x, int y) {
@@ -1064,12 +352,6 @@ gotoxy(x , y - 6);
 
 
 
-
-
-
-
-
-
 /* 
  * afficherMenu: Affiche le menu principal
  */
@@ -1160,8 +442,10 @@ void afficherMenu() {
 }
 
 
+
 /*
-* introduction: fonction permettant de faire l'affichage lors du début du jeu
+
+
 */
 
 
@@ -1220,67 +504,6 @@ resetcolors();
 
 
 
-char getLettre(const char *message) {
-    char lettre;
-
-    // Demander à l'utilisateur de deviner une lettre
-    printf("%s", message);
-    scanf(" %c", &lettre);
-
-    // Ignorer les caractères supplémentaires dans le buffer
-    while (getchar() != '\n');
-
-    return lettre;
-}
-
-
-
-// Fonction pour choisir un mot aléatoire à partir d'un fichier
-char *choisirMotAleatoire(const char *nomFichier) {
-    // Ouvrir le fichier en mode lecture
-    FILE *fichier = fopen(nomFichier, "r");
-
-    if (fichier == NULL) {
-        perror("Erreur lors de l'ouverture du fichier");
-        exit(EXIT_FAILURE);
-    }
-
-    // Compter le nombre de mots dans le fichier
-    int nombreDeMots = 0;
-    char mot[50];
-
-    while (fscanf(fichier, "%s", mot) == 1) {
-        nombreDeMots++;
-    }
-
-    // Choisir un mot aléatoire en se positionnant au hasard dans le fichier
-    srand(time(NULL));
-    int motAleatoire = rand() % nombreDeMots;
-
-    // Retourner au début du fichier
-    fseek(fichier, 0, SEEK_SET);
-
-    // Lire les mots jusqu'à atteindre le mot choisi aléatoirement
-    for (int i = 0; i < motAleatoire; i++) {
-        fscanf(fichier, "%s", mot);
-    }
-
-    // Fermer le fichier
-    fclose(fichier);
-
-    // Allouer de la mémoire pour le mot choisi
-    char *motChoisi = strdup(mot);
-
-    if (motChoisi == NULL) {
-        perror("Erreur lors de l'allocation de mémoire");
-        exit(EXIT_FAILURE);
-    }
-
-    return motChoisi;
-}
-
-
-
 void afficherEtatJeu(JeuPendu jeu, int x, int y) {
     
 
@@ -1300,54 +523,11 @@ void afficherEtatJeu(JeuPendu jeu, int x, int y) {
 }
 
 
+/*
 
 
-// Fonction pour vérifier si une lettre a déjà été utilisée
-int lettreDejaUtilisee(char lettre, const char lettresUtilisees[]) {
-    for (int i = 0; i < 26; i++) {
-        if (lettresUtilisees[i] == lettre) {
-            return 1;  // Lettre déjà utilisée
-        }
-    }
-    return 0;  // Lettre non utilisée
-}
 
-
-// Fonction pour marquer une lettre comme utilisée
-void marquerLettreUtilisee(char lettre, char lettresUtilisees[]) {
-    for (int i = 0; i < 26; i++) {
-        if (lettresUtilisees[i] == 0) {
-            lettresUtilisees[i] = lettre;
-            break;
-        }
-    }
-}
-
-// Fonction pour vérifier si une lettre est dans le mot secret
-int lettreDansMot(char lettre, const char motSecret[]) {
-    for (int i = 0; motSecret[i] != '\0'; i++) {
-        if (motSecret[i] == lettre) {
-            return 1;  // Lettre trouvée
-        }
-    }
-    return 0;  // Lettre non trouvée
-}
-
-// Fonction pour mettre à jour le mot affiché avec une lettre trouvée
-void mettreAJourMotAffiche(char lettre, const char motSecret[], char motAffiche[]) {
-    for (int i = 0; motSecret[i] != '\0'; i++) {
-        if (motSecret[i] == lettre) {
-            motAffiche[i] = lettre;
-        }
-    }
-}
-
-// Fonction pour vérifier si le mot a été entièrement deviné
-int motDevinerTrouve(const char motSecret[], const char motAffiche[]) {
-    return strcmp(motSecret, motAffiche) == 0;
-}
-
-
+*//
 // Fonction pour afficher le pendu en fonction du nombre d'essais restants
 void afficherPendu(int tentativesRestantes, int x, int y, int animationFrame) {
   
@@ -1499,7 +679,9 @@ void afficherPendu(int tentativesRestantes, int x, int y, int animationFrame) {
 }
 
 
+/***
 
+*//
 
 // Fonction pour demander à l'utilisateur s'il veut rejouer
 bool voulezRejouer(int x, int y) {
@@ -1523,6 +705,11 @@ bool voulezRejouer(int x, int y) {
 
 
 
+/*
+
+
+
+*/
 
 // Fonction pour jouer une partie au niveau B1
 void jouerPartieB1(int xDebutCadre, int yDebutCadre) {
@@ -1646,7 +833,10 @@ void jouerPartieB1(int xDebutCadre, int yDebutCadre) {
 }
 
 
+/*
 
+
+*/
 
 
 // Fonction pour jouer une partie au niveau B2
@@ -1768,7 +958,9 @@ void jouerPartieB2(int xDebutCadre, int yDebutCadre) {
     }
 }
 
+/**
 
+*/
 
 
 
@@ -1898,22 +1090,5 @@ void jouerPartieC1(int xDebutCadre, int yDebutCadre) {
 
 
 
-
-
-int main(void) {
-  
-   introduction();
  
-   setstdoutbuff();
-     
-    return 0;
-}
-
-
-
-
-
-
-
-
 

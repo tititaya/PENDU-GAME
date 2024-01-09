@@ -11,7 +11,7 @@
 #include <openssl/sha.h>
 #include <stdbool.h>
 
-#include "generale.h"
+#include "general.h"
 #include "interface.h"
 
 // Fonction pour vérifier si une chaîne contient uniquement des lettres
